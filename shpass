@@ -13,6 +13,16 @@ declare -a passwords
 username=''
 password=''
 
+function clipboard {
+  local password="$1"
+
+  # Copy to clipboard with xsel
+  if type xsel >/dev/null; then
+    echo "$password" | xsel -b -i
+  else
+    echo "No clipboard implemented"
+  fi
+}
 
 function import_gpg_db {
   local i=0
@@ -71,7 +81,8 @@ function return_pass {
         echo "User: ${BASH_REMATCH[1]}"
         echo "Password: ${BASH_REMATCH[2]}"
       else
-        echo "User: ${BASH_REMATCH[1]} Copied to CLIPBOARD(soon)"
+        echo "User: ${BASH_REMATCH[1]} Copied to CLIPBOARD"
+        clipboard "${BASH_REMATCH[2]}"
       fi
      fi
    done
