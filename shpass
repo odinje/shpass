@@ -31,7 +31,15 @@ function import_gpg_db {
 }
 
 function export_gpg_db {
-  echo test
+  local tmp
+
+  echo "${passwords[@]}"
+  for (( i=0; i<${#passwords[@]}; i++ )); do
+    tmp="${passwords[i]}\n"
+    passwords[i]="$tmp"
+  done
+
+  echo -e "${passwords[@]}" | $gpg_cmd -c > $db_path 
 
 }
 
@@ -39,6 +47,7 @@ function add_pass {
   local service="$1"
 
   passwords+=(${service}${delimiter}${username}${delimiter}${password})
+  export_gpg_db
   
 }
 
@@ -66,30 +75,38 @@ function return_pass {
       fi
      fi
    done
-   exit -1
 }
 
 function _usage {
   cat <<EOF
 Usage: $0 [options] service
-
+      add                          add the password to databse
+      del                          deletes the password from the database
       -v| --view                   view the password in cleartext
       -u| --user                   change or add username for service
       -p| --pass                   change or add password for service
-      -a| --add                    add username and password
       -h| --help                   prints usage menu
 EOF
 }
 
 
 
-
-
 ##### MAIN #####
-while [[ $# -gt 0 ]]; do
-  arg="$1"
+action="lookup"
+if [[ $# -eq 0 ]]; then
+  _usage
+  exit 1
+fi
 
-  case $arg in
+while [[ $# -ge 1 ]]; do
+
+  case "$1" in
+    add)
+      action="add"
+      ;;
+    del)
+      action="del"
+      ;;
     -v|--view)
       view_pass=1
       ;;
@@ -103,18 +120,22 @@ while [[ $# -gt 0 ]]; do
       _usage
       exit 0
       ;;
-    -a|--add)
-      echo "$username"
-      echo "$password"
-      ;;
-    *)
-      import_gpg_db
-      return_pass "${!#}"
   esac
   shift
 done
 
-#import_gpg_db
-#return_pass $1
-
-
+import_gpg_db
+service="$BASH_ARGV"
+case $action in
+  lookup)
+    return_pass "$service"
+    ;;
+  add)
+    add_pass "$service"
+    ;;
+  del)
+    remove_pass "$service"
+    ;;
+  *)
+    echo "Invalid option"
+esac
